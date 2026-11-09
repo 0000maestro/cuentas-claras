@@ -300,6 +300,7 @@ export interface ProcessOperation {
   reference: string | null
   account_id: string | null
   transaction_id: number | null
+  is_quote: boolean
   notes: string | null
 }
 

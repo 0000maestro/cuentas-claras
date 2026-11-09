@@ -333,3 +333,14 @@ select s.*,
   from public.savings_events s
   left join public.agreements a on a.id = s.agreement_id
   left join public.entities e on e.id = s.entity_id;
+
+-- ---------------------------------------------------------------------
+-- Ajuste (migración remota ahorro_cotizaciones): la línea base puede ser
+-- una cotización acordada con el cliente, que no aparece en cartola.
+-- ---------------------------------------------------------------------
+alter table public.process_operations add column is_quote boolean not null default false;
+alter table public.process_operations add constraint process_operations_quote_only_antes
+  check (not is_quote or phase = 'antes');
+-- verify_savings: no cruza cotizaciones con la cartola ni las cuenta como pendientes
+-- (aplicado reemplazando en la función: "transaction_id is null" → "... and not is_quote").
+-- v_savings: ops_total y ops_linked excluyen cotizaciones.

@@ -255,6 +255,7 @@ function SavingDetail({ saving, onClose, onChanged }: { saving: SavingEvent; onC
   const before = ops.filter(o => o.phase === 'antes')
   const after = ops.filter(o => o.phase === 'despues')
   const r = (list: ProcessOperation[]) => {
+    // costo unitario ponderado
     const u = list.reduce((a, o) => a + o.units, 0)
     return u ? list.reduce((a, o) => a + o.clp_amount, 0) / u : null
   }
@@ -356,7 +357,9 @@ function OpsTable({ title, ops, linked, canDelete, onDelete }: {
                     <td className="num text-right">{units(o.units)}</td>
                     <td className="num text-right">{rate(o.clp_amount / o.units)}</td>
                     <td className="text-[12.5px]">
-                      {o.transaction_id
+                      {o.is_quote
+                        ? <span className="inline-flex items-center gap-1 text-accent" title={o.notes ?? ''}><FileText size={14} /> Cotización acordada</span>
+                        : o.transaction_id
                         ? <span className="inline-flex items-center gap-1 text-income" title={t ? `${t.description} · ${dateShort(t.posted_at)}` : ''}><CheckCircle2 size={14} /> {t ? `${dateShort(t.posted_at)} · ${t.description.slice(0, 22)}` : 'Cruzada'}</span>
                         : <span className="inline-flex items-center gap-1 text-ink-3"><Circle size={14} /> Falta la cartola</span>}
                     </td>
@@ -379,6 +382,8 @@ function AddOperation({ saving, accounts, onAdded }: { saving: SavingEvent; acco
   const [u, setU] = useState('')
   const [ref, setRef] = useState('')
   const [account, setAccount] = useState('')
+  const [isQuote, setIsQuote] = useState(false)
+  const [notes, setNotes] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const clpN = Number(clp.replace(/\./g, '')), uN = Number(u.replace(',', '.'))
@@ -388,6 +393,7 @@ function AddOperation({ saving, accounts, onAdded }: { saving: SavingEvent; acco
     const { error } = await supabase.from('process_operations').insert({
       org_id: saving.org_id, saving_id: saving.id, phase, op_date: date,
       clp_amount: clpN, units: uN, reference: ref || null, account_id: account || null,
+      is_quote: phase === 'antes' && isQuote, notes: notes || null,
     })
     setBusy(false)
     if (error) return setErr(error.message)
@@ -422,6 +428,15 @@ function AddOperation({ saving, accounts, onAdded }: { saving: SavingEvent; acco
           <input className="input" value={ref} onChange={e => setRef(e.target.value)} />
         </Field>
       </div>
+      {phase === 'antes' && (
+        <label className="flex items-start gap-2 mt-3 text-[13px]">
+          <input type="checkbox" className="mt-0.5" checked={isQuote} onChange={e => setIsQuote(e.target.checked)} />
+          <span>Es una <b>cotización acordada con el cliente</b> (cómo habría costado con el método antiguo). No necesita aparecer en la cartola.</span>
+        </label>
+      )}
+      <Field label="Detalle" hint={isQuote ? 'Desglose de la cotización: tipo de cambio, comisiones, con quién y cuándo se hizo.' : 'Opcional'}>
+        <textarea className="input mt-3" rows={2} value={notes} onChange={e => setNotes(e.target.value)} />
+      </Field>
       {clpN > 0 && uN > 0 && <p className="text-ink-2 text-[13px] mt-2">Costo unitario: <b className="num">{rate(clpN / uN)}</b> por {saving.unit_label}</p>}
       {err && <p className="text-bad mt-2">{err}</p>}
       <div className="flex justify-end mt-3">
