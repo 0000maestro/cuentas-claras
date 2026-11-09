@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+
+  --color-paper: #f6f7f6;
+  --color-sheet: #ffffff;
+  --color-ink: #16191c;
+  --color-ink-2: #4e555c;
+  --color-ink-3: #8a9097;
+  --color-line: #e3e6e5;
+  --color-line-2: #cfd4d2;
+
+  --color-accent: #1c5cab;
+  --color-accent-soft: #e6eefa;
+  --color-income: #008300;
+  --color-income-soft: #e4f4e4;
+  --color-warn: #c98500;
+  --color-warn-soft: #fff3da;
+  --color-bad: #c43c3c;
+  --color-bad-soft: #fbe7e7;
+
+  --color-s1: #2a78d6;
+  --color-s2: #eb6834;
+  --color-s3: #1baf7a;
+  --color-s4: #eda100;
+  --color-s5: #e87ba4;
+  --color-s6: #008300;
+  --color-s7: #6250d6;
+  --color-s8: #e34948;
+}
+
+html, body, #root { height: 100%; }
+body {
+  @apply bg-paper text-ink font-sans antialiased;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.num { font-variant-numeric: tabular-nums; }
+
+@layer components {
+/* Controles base */
+.input {
+  @apply w-full rounded-md border border-line-2 bg-sheet px-3 py-2 text-ink outline-none;
+}
+.input:focus-visible { @apply border-accent ring-2 ring-accent/20; }
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-md px-3.5 py-2 font-medium transition-colors;
+}
+.btn:focus-visible { @apply outline-2 outline-offset-2 outline-accent; }
+.btn-primary { @apply bg-accent text-white hover:bg-[#174c8e] disabled:opacity-50; }
+.btn-ghost { @apply bg-transparent text-ink-2 hover:bg-line/60 hover:text-ink; }
+.btn-outline { @apply border border-line-2 bg-sheet text-ink hover:bg-paper; }
+.btn-sm { @apply px-2.5 py-1.5 text-[13px]; }
+
+.card { @apply bg-sheet border border-line rounded-lg; }
+
+table.data { @apply w-full border-collapse; }
+table.data th {
+  @apply text-left font-medium text-ink-3 text-[12.5px] py-2 px-3 border-b border-line whitespace-nowrap;
+}
+table.data td { @apply py-2 px-3 border-b border-line/70 align-middle; }
+table.data tr:last-child td { @apply border-b-0; }
+table.data tbody tr:hover { background: #fafbfa; }
+
+.chip {
+  @apply inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[12px] font-medium whitespace-nowrap;
+}
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
