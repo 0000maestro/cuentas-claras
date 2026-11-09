@@ -49,8 +49,9 @@ returns boolean language sql security definer stable set search_path = '' as $$
     where m.org_id = p_org and m.user_id = (select auth.uid()) and m.role in ('owner','admin')
   );
 $$;
-revoke execute on function private.is_org_member(uuid) from public, anon, authenticated;
-revoke execute on function private.can_edit_org(uuid) from public, anon, authenticated;
+grant usage on schema private to authenticated;
+grant execute on function private.is_org_member(uuid) to authenticated;
+grant execute on function private.can_edit_org(uuid) to authenticated;
 
 -- Al entrar, el usuario convierte sus invitaciones en membresías
 create or replace function public.accept_invites()
