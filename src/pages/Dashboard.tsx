@@ -6,6 +6,8 @@ import { fetchDebts, fetchMonthlySummary, fetchRecurring, fetchTransactions, mon
 import { compact, dateDay, money, monthLabel, pct, seriesColor } from '../lib/format'
 import type { Debt, MonthlySummary, Recurring, Transaction } from '../lib/types'
 import { Empty, PageHeader, Stat } from '../components/ui'
+import Onboarding from '../components/Onboarding'
+import { supabase } from '../lib/supabase'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -16,6 +18,7 @@ export default function Dashboard() {
   const [debts, setDebts] = useState<Debt[]>([])
   const [recent, setRecent] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
+  const [counts, setCounts] = useState<{ tx: number; rules: number } | null>(null)
 
   const months = useMemo(() => monthsBack(month, 6), [month])
 
@@ -32,6 +35,10 @@ export default function Dashboard() {
       if (!alive) return
       setSummary(s); setRecurring(r); setDebts(d); setRecent(t); setLoading(false)
     }).catch(() => setLoading(false))
+    Promise.all([
+      supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('org_id', org.id),
+      supabase.from('rules').select('id', { count: 'exact', head: true }).eq('org_id', org.id),
+    ]).then(([a, b]) => { if (alive) setCounts({ tx: a.count ?? 0, rules: b.count ?? 0 }) })
     return () => { alive = false }
   }, [org, entityId, month, months])
 
@@ -81,6 +88,10 @@ export default function Dashboard() {
         title={entityId ? entities.find(e => e.id === entityId)?.name ?? 'Panel' : org.name}
         subtitle={`Resumen de ${monthLabel(month).toLowerCase()}`}
       />
+
+      {counts && (counts.tx === 0 || counts.rules === 0 || debts.length === 0 || !org.baseline_fixed_cost) && (
+        <Onboarding txCount={counts.tx} recurringCount={recurring.length} debtCount={debts.length} rulesCount={counts.rules} />
+      )}
 
       {/* Meta de recorte: el elemento protagonista */}
       <section className="card p-6 mb-5">

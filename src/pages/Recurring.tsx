@@ -35,6 +35,7 @@ export default function Recurring() {
   const cut = sum(r => r.status === 'cancelar' || r.status === 'cancelado')
   const review = sum(r => r.status === 'revisar')
   const original = total + sum(r => r.status === 'cancelado')
+  const varied = rows.filter(r => r.last_amount != null && (r.expected_amount ?? r.avg_amount) && Math.abs((r.last_amount - (r.expected_amount ?? r.avg_amount)!) / (r.expected_amount ?? r.avg_amount)!) >= 0.1).length
   const counts = Object.fromEntries((Object.keys(RECURRING_STATUS_LABEL) as RecurringStatus[]).map(s => [s, rows.filter(r => r.status === s).length]))
 
   async function setStatus(r: Recurring, status: RecurringStatus) {
@@ -61,7 +62,7 @@ export default function Recurring() {
     <div>
       <PageHeader
         title="Costos recurrentes"
-        subtitle="Suscripciones, arriendos, seguros, planes y todo lo que se cobra solo cada mes. Decide uno por uno qué se mantiene, qué se negocia y qué se corta."
+        subtitle={`Suscripciones, arriendos, seguros, planes y todo lo que se cobra solo cada mes. Decide uno por uno qué se mantiene, qué se negocia y qué se corta.${varied ? ` · ${varied} con el último cobro distinto al esperado (±10%).` : ''}`}
         actions={canEdit && (
           <>
             <button className="btn btn-outline" onClick={runDetect} disabled={busy}>{busy ? <Spinner /> : <Wand2 size={15} />} Detectar en movimientos</button>
@@ -96,7 +97,7 @@ export default function Recurring() {
           <table className="data">
             <thead>
               <tr>
-                <th>Cargo</th><th>Entidad</th><th>Categoría</th><th>Frecuencia</th><th className="text-right">Equivale al mes</th><th>Visto</th><th>Decisión</th><th></th>
+                <th>Cargo</th><th>Entidad</th><th>Categoría</th><th>Frecuencia</th><th className="text-right">Equivale al mes</th><th className="text-right">Último cobro</th><th>Visto</th><th>Decisión</th><th></th>
               </tr>
             </thead>
             <tbody>
@@ -110,6 +111,7 @@ export default function Recurring() {
                   <td className="text-ink-2">{r.category_name ?? '—'}</td>
                   <td className="text-ink-2">{CADENCE_LABEL[r.cadence]}</td>
                   <td className="num text-right font-medium">{money(r.monthly_equivalent)}</td>
+                  <td className="num text-right whitespace-nowrap"><Variation last={r.last_amount} expected={r.expected_amount ?? r.avg_amount} /></td>
                   <td className="text-ink-2 whitespace-nowrap text-[13px]">
                     {r.months_seen ? `${r.months_seen} ${r.months_seen === 1 ? 'mes' : 'meses'}` : '—'}
                     {r.last_seen && <div className="text-ink-3 text-[12px]">último {dateShort(r.last_seen)}</div>}
@@ -144,6 +146,19 @@ export default function Recurring() {
         “Equivale al mes” prorratea los cargos anuales o trimestrales. El recorte decidido suma lo marcado como “Cancelar” y “Cancelado”; el panel principal solo cuenta como logrado lo ya “Cancelado”.
       </p>
     </div>
+  )
+}
+
+function Variation({ last, expected }: { last: number | null | undefined; expected: number | null | undefined }) {
+  if (last == null) return <span className="text-ink-3">—</span>
+  if (!expected) return <span>{money(last)}</span>
+  const delta = (last - expected) / expected
+  const pctTxt = `${delta > 0 ? '+' : ''}${(delta * 100).toFixed(0)}%`
+  const tone = Math.abs(delta) < 0.03 ? 'text-ink-3' : delta > 0 ? 'text-bad' : 'text-income'
+  return (
+    <span>
+      {money(last)} <span className={`text-[12px] ${tone}`} title="Diferencia respecto al monto esperado">{Math.abs(delta) < 0.03 ? '=' : pctTxt}</span>
+    </span>
   )
 }
 

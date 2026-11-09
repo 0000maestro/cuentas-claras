@@ -130,7 +130,10 @@ export default function Transactions() {
                     <td className="text-ink-2 whitespace-nowrap">{dateDay(t.posted_at)}</td>
                     <td>
                       <div className="truncate" title={t.description}>{t.description}</div>
-                      {t.recurring_id && <span className="text-accent text-[11.5px]">Recurrente</span>}
+                      <div className="flex gap-2 text-[11.5px] truncate">
+                        {t.counterparty && <span className="text-ink-2 truncate" title={t.notes ?? ''}>{t.counterparty}{t.notes ? ` · ${t.notes}` : ''}</span>}
+                        {t.recurring_id && <span className="text-accent shrink-0">Recurrente</span>}
+                      </div>
                     </td>
                     <td>
                       {canEdit ? (
@@ -169,7 +172,7 @@ export default function Transactions() {
                           <button className="btn btn-ghost btn-sm" title={t.is_transfer ? 'Quitar marca de traspaso' : 'Marcar como traspaso entre cuentas propias'} onClick={() => patch(t, { is_transfer: !t.is_transfer })}>
                             {t.is_transfer ? 'No es traspaso' : 'Traspaso'}
                           </button>
-                          <button className="btn btn-ghost btn-sm" title="Crear regla para movimientos parecidos" onClick={() => setRuleFor(t)}>Regla</button>
+                          <button className="btn btn-ghost btn-sm" title="Explicar qué es este gasto y recordarlo" onClick={() => setRuleFor(t)}>Explicar</button>
                         </div>
                       )}
                     </td>
@@ -201,25 +204,31 @@ export default function Transactions() {
 
 function RuleModal({ tx, onClose, onSaved }: { tx: Transaction; onClose: () => void; onSaved: () => void }) {
   const { org, entities, categories } = useApp()
-  const [pattern, setPattern] = useState(tx.description_norm)
-  const [categoryId, setCategoryId] = useState(tx.category_id ?? '')
-  const [entityId, setEntityId] = useState('')
   const [counterparty, setCounterparty] = useState(tx.counterparty ?? '')
-  const [markTransfer, setMarkTransfer] = useState(false)
-  const [applyExisting, setApplyExisting] = useState(true)
+  const [notes, setNotes] = useState(tx.notes ?? '')
+  const [categoryId, setCategoryId] = useState(tx.category_id ?? '')
+  const [entityId, setEntityId] = useState(tx.entity_id)
+  const [isTransfer, setIsTransfer] = useState(tx.is_transfer)
+  const [remember, setRemember] = useState(true)
+  const [pattern, setPattern] = useState(tx.description_norm)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
   async function save() {
     if (!org) return
     setBusy(true); setErr(null)
-    const { error } = await supabase.from('rules').insert({
-      org_id: org.id, pattern: pattern.trim().toLowerCase(),
-      category_id: categoryId || null, entity_id: entityId || null,
-      counterparty: counterparty || null, mark_transfer: markTransfer,
-    })
+    const { error } = await supabase.from('transactions').update({
+      counterparty: counterparty || null, notes: notes || null, category_id: categoryId || null,
+      entity_id: entityId, is_transfer: isTransfer, reviewed: true,
+    }).eq('id', tx.id)
     if (error) { setErr(error.message); setBusy(false); return }
-    if (applyExisting) {
+    if (remember && pattern.trim()) {
+      const { error: e1 } = await supabase.from('rules').insert({
+        org_id: org.id, pattern: pattern.trim().toLowerCase(),
+        category_id: categoryId || null, entity_id: entityId !== tx.entity_id ? entityId : null,
+        counterparty: counterparty || null, mark_transfer: isTransfer,
+      })
+      if (e1) { setErr(e1.message); setBusy(false); return }
       const { error: e2 } = await supabase.rpc('reapply_rules', { p_org: org.id })
       if (e2) { setErr(e2.message); setBusy(false); return }
     }
@@ -227,41 +236,52 @@ function RuleModal({ tx, onClose, onSaved }: { tx: Transaction; onClose: () => v
   }
 
   return (
-    <Modal open onClose={onClose} title="Nueva regla de clasificación">
-      <p className="text-ink-2 mb-4">
-        Cada movimiento futuro (y los existentes, si marcas la opción) cuya descripción contenga el texto se clasificará solo.
-      </p>
+    <Modal open onClose={onClose} title="¿Qué es este movimiento?">
+      <div className="rounded-md bg-paper px-3 py-2 mb-4 text-[13px]">
+        <div className="font-medium truncate">{tx.description}</div>
+        <div className="text-ink-2 num">{dateDay(tx.posted_at)} · {money(tx.amount, { sign: true })}</div>
+      </div>
       <div className="flex flex-col gap-3">
-        <Field label="Si la descripción contiene" hint="Acorta el texto a la parte que se repite, sin números de folio ni fechas.">
-          <input className="input" value={pattern} onChange={e => setPattern(e.target.value)} />
+        <Field label="Qué es (nombre claro)" hint="Ej: Luz del local, Seguro de la camioneta, Plan de celulares del equipo.">
+          <input className="input" value={counterparty} onChange={e => setCounterparty(e.target.value)} autoFocus />
         </Field>
-        <Field label="Categoría">
-          <select className="input" value={categoryId} onChange={e => setCategoryId(e.target.value)}>
-            <option value="">No cambiar</option>
-            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        </Field>
-        <Field label="Asignar a entidad" hint="Útil cuando un gasto de la empresa se paga desde una cuenta personal.">
-          <select className="input" value={entityId} onChange={e => setEntityId(e.target.value)}>
-            <option value="">No cambiar</option>
-            {entities.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-          </select>
-        </Field>
-        <Field label="Nombre de la contraparte (opcional)">
-          <input className="input" value={counterparty} onChange={e => setCounterparty(e.target.value)} placeholder="Ej: Enel, Movistar, Banco Santander" />
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Categoría">
+            <select className="input" value={categoryId} onChange={e => setCategoryId(e.target.value)}>
+              <option value="">Sin categoría</option>
+              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </Field>
+          <Field label="De quién es el gasto">
+            <select className="input" value={entityId} onChange={e => setEntityId(e.target.value)}>
+              {entities.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+            </select>
+          </Field>
+        </div>
+        <Field label="Nota (opcional)" hint="Contexto que ayude después: contrato, vencimiento, con quién se negocia, si se puede cortar.">
+          <textarea className="input" rows={2} value={notes} onChange={e => setNotes(e.target.value)} />
         </Field>
         <label className="flex items-center gap-2 text-ink-2">
-          <input type="checkbox" checked={markTransfer} onChange={e => setMarkTransfer(e.target.checked)} />
-          Es un traspaso entre cuentas propias (no cuenta como ingreso ni gasto)
+          <input type="checkbox" checked={isTransfer} onChange={e => setIsTransfer(e.target.checked)} />
+          Es un traspaso entre cuentas propias (no es ingreso ni gasto)
         </label>
-        <label className="flex items-center gap-2 text-ink-2">
-          <input type="checkbox" checked={applyExisting} onChange={e => setApplyExisting(e.target.checked)} />
-          Aplicar también a los movimientos ya importados
-        </label>
+        <div className="border-t border-line pt-3">
+          <label className="flex items-center gap-2 font-medium">
+            <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} />
+            Recordarlo para todos los cobros parecidos
+          </label>
+          {remember && (
+            <div className="mt-2">
+              <Field label="Cuando la descripción contenga" hint="Deja solo la parte que se repite cada mes, sin números ni fechas.">
+                <input className="input" value={pattern} onChange={e => setPattern(e.target.value)} />
+              </Field>
+            </div>
+          )}
+        </div>
         {err && <p className="text-bad">{err}</p>}
         <div className="flex justify-end gap-2 pt-2">
           <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
-          <button className="btn btn-primary" onClick={save} disabled={busy || !pattern.trim()}>{busy ? 'Guardando…' : 'Guardar regla'}</button>
+          <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? 'Guardando…' : 'Guardar'}</button>
         </div>
       </div>
     </Modal>
