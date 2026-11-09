@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, LayoutGrid, List, Repeat, Landmark, Upload, Settings, LogOut, Menu, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, LayoutGrid, List, Repeat, Landmark, Upload, Settings, LogOut, Menu, X, PiggyBank } from 'lucide-react'
 import { useApp } from '../state/AppContext'
 import Wordmark from './Wordmark'
 import { addMonths, monthLabel, seriesColor } from '../lib/format'
@@ -10,6 +10,7 @@ const nav = [
   { to: '/movimientos', label: 'Movimientos', icon: List },
   { to: '/recurrentes', label: 'Costos recurrentes', icon: Repeat },
   { to: '/deudas', label: 'Deudas', icon: Landmark },
+  { to: '/ahorros', label: 'Ahorros y comisión', icon: PiggyBank },
   { to: '/importar', label: 'Importar cartolas', icon: Upload },
   { to: '/configuracion', label: 'Configuración', icon: Settings },
 ]

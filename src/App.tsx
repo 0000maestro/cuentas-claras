@@ -8,6 +8,7 @@ import Transactions from './pages/Transactions'
 import Recurring from './pages/Recurring'
 import Debts from './pages/Debts'
 import Import from './pages/Import'
+import Savings from './pages/Savings'
 import Settings from './pages/Settings'
 
 export default function App() {
@@ -25,6 +26,7 @@ export default function App() {
         <Route path="movimientos" element={<Transactions />} />
         <Route path="recurrentes" element={<Recurring />} />
         <Route path="deudas" element={<Debts />} />
+        <Route path="ahorros" element={<Savings />} />
         <Route path="importar" element={<Import />} />
         <Route path="configuracion" element={<Settings />} />
         <Route path="*" element={<Navigate to="/" replace />} />

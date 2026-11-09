@@ -19,7 +19,7 @@ export default function Import() {
   const [step, setStep] = useState<Step>('archivo')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
-  const [result, setResult] = useState<{ inserted: number; duplicated: number; total: number } | null>(null)
+  const [result, setResult] = useState<{ inserted: number; duplicated: number; total: number; verified: number } | null>(null)
 
   const account = accounts.find(a => a.id === accountId)
   const headers = useMemo(() => (grid && mapping ? headersAt(grid, mapping.headerRow) : []), [grid, mapping])
@@ -73,8 +73,10 @@ export default function Import() {
       }
       await supabase.from('imports').update({ rows_inserted: fresh.length, rows_duplicated: parsed.rows.length - fresh.length }).eq('id', importId)
       await supabase.from('accounts').update({ import_mapping: mapping }).eq('id', account.id)
+      // Confirmar ahorros con la cartola recién cargada (si no hay ahorros pendientes, no hace nada)
+      const { data: verified } = await supabase.rpc('verify_savings', { p_org: org.id })
       await refreshOrg()
-      setResult({ inserted: fresh.length, duplicated: parsed.rows.length - fresh.length, total: parsed.rows.length })
+      setResult({ inserted: fresh.length, duplicated: parsed.rows.length - fresh.length, total: parsed.rows.length, verified: Number(verified ?? 0) })
       setStep('listo')
     } catch (e) {
       setErr((e as Error).message)
@@ -208,6 +210,11 @@ export default function Import() {
                 {result.inserted} movimientos nuevos en {account?.bank} · {account?.name}.
                 {result.duplicated > 0 && <> {result.duplicated} ya estaban cargados y se omitieron.</>}
               </p>
+              {result.verified > 0 && (
+                <p className="mt-3 rounded-md bg-income-soft text-income px-3 py-2 text-[13px]">
+                  Esta cartola confirmó {result.verified} {result.verified === 1 ? 'ahorro' : 'ahorros'}. <Link to="/ahorros" className="underline">Ver en Ahorros y comisión</Link>
+                </p>
+              )}
               <div className="flex gap-2 mt-5">
                 <Link to="/movimientos" className="btn btn-primary">Ver movimientos</Link>
                 <button className="btn btn-outline" onClick={reset}>Importar otra cartola</button>

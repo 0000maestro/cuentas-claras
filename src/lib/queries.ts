@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { Debt, MonthlySummary, Recurring, Transaction } from './types'
+import type { Agreement, Debt, MonthlySummary, ProcessOperation, Recurring, SavingEvent, SavingsSummary, Transaction } from './types'
 import { addMonths, firstDayOfMonth, lastDayOfMonth } from './format'
 
 export async function fetchMonthlySummary(orgId: string, fromMonth: string, toMonth: string) {
@@ -73,4 +73,44 @@ export function monthsBack(month: string, n: number): string[] {
   const out: string[] = []
   for (let i = n - 1; i >= 0; i--) out.push(addMonths(month, -i))
   return out
+}
+
+const num = (v: unknown) => (v === null || v === undefined ? null : Number(v))
+
+export async function fetchSavings(orgId: string) {
+  const { data, error } = await supabase.from('v_savings').select('*').eq('org_id', orgId).order('created_at', { ascending: false })
+  if (error) throw error
+  return (data as SavingEvent[]).map(s => ({
+    ...s,
+    amount_before: num(s.amount_before), amount_after_expected: Number(s.amount_after_expected ?? 0),
+    amount_after_actual: num(s.amount_after_actual), monthly_saving: num(s.monthly_saving),
+    commission_pct: Number(s.commission_pct), commission_amount: num(s.commission_amount),
+    rate_before: num(s.rate_before), rate_after: num(s.rate_after), volume_units: num(s.volume_units),
+    ops_total: Number(s.ops_total ?? 0), ops_linked: Number(s.ops_linked ?? 0),
+  }))
+}
+
+export async function fetchSavingsSummary(orgId: string): Promise<SavingsSummary | null> {
+  const { data, error } = await supabase.from('v_savings_summary').select('*').eq('org_id', orgId).maybeSingle()
+  if (error) throw error
+  if (!data) return null
+  const d = data as SavingsSummary
+  return {
+    ...d,
+    pendientes: Number(d.pendientes), verificados: Number(d.verificados), no_logrados: Number(d.no_logrados),
+    ahorro_mensual_total: Number(d.ahorro_mensual_total), ahorro_proyectado_12m: Number(d.ahorro_proyectado_12m),
+    comision_devengada: Number(d.comision_devengada), comision_pagada: Number(d.comision_pagada),
+  }
+}
+
+export async function fetchAgreement(orgId: string): Promise<Agreement | null> {
+  const { data, error } = await supabase.from('agreements').select('*').eq('org_id', orgId).eq('kind', 'ahorro_compartido').maybeSingle()
+  if (error) throw error
+  return data ? { ...(data as Agreement), commission_pct: Number((data as Agreement).commission_pct) } : null
+}
+
+export async function fetchProcessOperations(savingId: string) {
+  const { data, error } = await supabase.from('process_operations').select('*').eq('saving_id', savingId).order('phase').order('op_date')
+  if (error) throw error
+  return (data as ProcessOperation[]).map(o => ({ ...o, clp_amount: Number(o.clp_amount), units: Number(o.units) }))
 }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Plus, Wand2 } from 'lucide-react'
+import { PiggyBank, Plus, Wand2 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { useApp } from '../state/AppContext'
 import { supabase } from '../lib/supabase'
 import { fetchRecurring } from '../lib/queries'
@@ -17,6 +18,7 @@ export default function Recurring() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [editing, setEditing] = useState<Recurring | 'new' | null>(null)
+  const [saving, setSaving] = useState<Recurring | null>(null)
   const [statusFilter, setStatusFilter] = useState<RecurringStatus | 'todos'>('todos')
 
   const load = useCallback(async () => {
@@ -127,7 +129,12 @@ export default function Recurring() {
                       </select>
                     ) : <Chip tone={STATUS_TONE[r.status]}>{RECURRING_STATUS_LABEL[r.status]}</Chip>}
                   </td>
-                  <td className="text-right">{canEdit && <button className="btn btn-ghost btn-sm" onClick={() => setEditing(r)}>Editar</button>}</td>
+                  <td className="text-right whitespace-nowrap">
+                    {canEdit && (r.expected_amount ?? 0) > 0 && (
+                      <button className="btn btn-ghost btn-sm" onClick={() => setSaving(r)} title="Registrar un ahorro sobre este cargo"><PiggyBank size={14} /> Ahorro</button>
+                    )}
+                    {canEdit && <button className="btn btn-ghost btn-sm" onClick={() => setEditing(r)}>Editar</button>}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -142,6 +149,7 @@ export default function Recurring() {
           onSaved={() => { setEditing(null); load() }}
         />
       )}
+      {saving && <RegisterSavingModal item={saving} onClose={() => setSaving(null)} onSaved={() => { setSaving(null); load() }} />}
       <p className="text-ink-3 text-[12.5px] mt-4 max-w-[80ch]">
         “Equivale al mes” prorratea los cargos anuales o trimestrales. El recorte decidido suma lo marcado como “Cancelar” y “Cancelado”; el panel principal solo cuenta como logrado lo ya “Cancelado”.
       </p>
@@ -243,6 +251,63 @@ function RecurringModal({ item, onClose, onSaved }: { item: Recurring | null; on
             <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
             <button className="btn btn-primary" onClick={save} disabled={busy || !name.trim()}>{busy ? 'Guardando…' : 'Guardar'}</button>
           </div>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+function RegisterSavingModal({ item, onClose, onSaved }: { item: Recurring; onClose: () => void; onSaved: () => void }) {
+  const navigate = useNavigate()
+  const [action, setAction] = useState<'cancelado' | 'renegociado' | 'rebajado'>('cancelado')
+  const [after, setAfter] = useState('')
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const before = item.expected_amount ?? 0
+  const afterN = action === 'cancelado' ? 0 : Number(after.replace(/\./g, '') || 0)
+  const savingN = before - afterN
+  const valid = savingN > 0 && afterN >= 0 && (action === 'cancelado' || after !== '')
+
+  async function save() {
+    setBusy(true); setErr(null)
+    const { error } = await supabase.rpc('register_saving', {
+      p_recurring: item.id, p_action: action, p_amount_after: afterN, p_note: note || null,
+    })
+    setBusy(false)
+    if (error) return setErr(error.message)
+    onSaved()
+    navigate('/ahorros')
+  }
+
+  return (
+    <Modal open onClose={onClose} title={`Registrar ahorro · ${item.name}`}>
+      <p className="text-ink-2 text-[13px] mb-3">
+        Hoy cuesta <b className="num">{money(before)}</b> por cobro. El ahorro quedará <b>esperando la cartola</b>: se confirma solo cuando el próximo cobro no aparezca, o aparezca rebajado.
+      </p>
+      <div className="flex flex-col gap-3">
+        <Field label="Qué se hizo">
+          <select className="input" value={action} onChange={e => setAction(e.target.value as typeof action)}>
+            <option value="cancelado">Se canceló</option>
+            <option value="renegociado">Se renegoció</option>
+            <option value="rebajado">Se rebajó (cambio de plan, etc.)</option>
+          </select>
+        </Field>
+        {action !== 'cancelado' && (
+          <Field label="Nuevo monto por cobro (CLP)"><input className="input num" inputMode="numeric" value={after} onChange={e => setAfter(e.target.value)} /></Field>
+        )}
+        <Field label="Detalle" hint="Con quién se habló, número de solicitud, desde cuándo rige…">
+          <textarea className="input" rows={2} value={note} onChange={e => setNote(e.target.value)} />
+        </Field>
+        {valid && (
+          <div className="rounded-md bg-paper border border-line px-3 py-2 text-[13px] num">
+            Ahorro mensual: <b>{money(savingN)}</b> · Comisión única si se verifica: <b>{money(Math.round(savingN / 2))}</b>
+          </div>
+        )}
+        {err && <p className="text-bad">{err}</p>}
+        <div className="flex justify-end gap-2 pt-1">
+          <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
+          <button className="btn btn-primary" onClick={save} disabled={busy || !valid}>{busy ? 'Guardando…' : 'Registrar ahorro'}</button>
         </div>
       </div>
     </Modal>

@@ -230,3 +230,108 @@ export const CADENCE_LABEL: Record<Cadence, string> = {
   anual: 'Anual',
   irregular: 'Irregular',
 }
+
+// ── Ahorro compartido ─────────────────────────────────────────────
+export interface Agreement {
+  id: string
+  org_id: string
+  kind: string
+  commission_pct: number
+  payout: 'unico' | 'recurrente'
+  terms_md: string
+  accepted_by: string | null
+  accepted_email: string | null
+  accepted_at: string | null
+  created_at: string
+}
+
+export type SavingKind = 'cargo' | 'proceso'
+export type SavingAction = 'cancelado' | 'renegociado' | 'rebajado' | 'cambio_proceso' | 'otro'
+export type SavingStatus = 'pendiente' | 'verificado' | 'no_logrado' | 'reaparecio'
+export type CommissionStatus = 'pendiente' | 'devengada' | 'pagada' | 'anulada'
+
+export interface SavingEvent {
+  id: string
+  org_id: string
+  agreement_id: string | null
+  recurring_id: string | null
+  entity_id: string | null
+  account_id: string | null
+  kind: SavingKind
+  title: string
+  action: SavingAction
+  action_note: string | null
+  amount_before: number | null
+  amount_after_expected: number
+  match_pattern: string | null
+  window_start: string
+  window_end: string
+  grace_days: number
+  status: SavingStatus
+  amount_after_actual: number | null
+  monthly_saving: number | null
+  commission_pct: number
+  commission_amount: number | null
+  verified_at: string | null
+  verification_detail: string | null
+  reappeared_at: string | null
+  commission_status: CommissionStatus
+  commission_paid_at: string | null
+  commission_payment_tx: number | null
+  unit_label: string | null
+  rate_before: number | null
+  rate_after: number | null
+  volume_units: number | null
+  created_at: string
+  // vista
+  entity_name?: string | null
+  ops_total?: number
+  ops_linked?: number
+}
+
+export interface ProcessOperation {
+  id: string
+  org_id: string
+  saving_id: string
+  phase: 'antes' | 'despues'
+  op_date: string
+  clp_amount: number
+  units: number
+  reference: string | null
+  account_id: string | null
+  transaction_id: number | null
+  notes: string | null
+}
+
+export interface SavingsSummary {
+  org_id: string
+  pendientes: number
+  verificados: number
+  no_logrados: number
+  ahorro_mensual_total: number
+  ahorro_proyectado_12m: number
+  comision_devengada: number
+  comision_pagada: number
+}
+
+export const SAVING_ACTION_LABEL: Record<SavingAction, string> = {
+  cancelado: 'Cancelado',
+  renegociado: 'Renegociado',
+  rebajado: 'Rebajado',
+  cambio_proceso: 'Cambio de proceso',
+  otro: 'Otro',
+}
+
+export const SAVING_STATUS_LABEL: Record<SavingStatus, string> = {
+  pendiente: 'Esperando cartola',
+  verificado: 'Verificado',
+  no_logrado: 'No logrado',
+  reaparecio: 'Verificado · reapareció',
+}
+
+export const COMMISSION_STATUS_LABEL: Record<CommissionStatus, string> = {
+  pendiente: 'Aún no corresponde',
+  devengada: 'Por pagar',
+  pagada: 'Pagada',
+  anulada: 'Anulada',
+}
