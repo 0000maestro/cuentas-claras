@@ -72,3 +72,11 @@ table.data tbody tr:hover { background: #fafbfa; }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* iPhone hace zoom automático al tocar un campo con letra menor a 16px.
+   En pantallas táctiles todos los campos usan 16px (fuera de capas, para ganarle a las utilidades). */
+@media (pointer: coarse), (max-width: 1023px) {
+  input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea {
+    font-size: 16px !important;
+  }
+}
