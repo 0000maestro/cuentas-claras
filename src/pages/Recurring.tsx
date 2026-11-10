@@ -73,7 +73,7 @@ export default function Recurring() {
         )}
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         <Stat label="Comprometido al mes" value={money(total)} sub={`${rows.filter(r => r.status !== 'cancelado').length} cargos activos`} />
         <Stat label="Por revisar" value={money(review)} sub={`${counts.revisar} sin decisión`} />
         <Stat label="Se mantiene" value={money(keep)} tone="neutral" sub={`${counts.mantener} confirmados`} />

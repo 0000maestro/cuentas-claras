@@ -23,7 +23,8 @@ export default function Debts() {
   useEffect(() => { load() }, [load])
 
   const active = rows.filter(d => d.status !== 'pagada')
-  const remaining = active.reduce((a, d) => a + d.remaining_est!, 0)
+  const remaining = active.reduce((a, d) => a + (d.remaining_est ?? 0), 0)
+  const unknownBalance = active.filter(d => d.remaining_est == null).length
   const paid = rows.reduce((a, d) => a + (d.paid_total ?? 0), 0)
   const monthly = active.reduce((a, d) => a + (d.monthly_payment ?? 0), 0)
   const interest = active.reduce((a, d) => a + (d.monthly_interest_est ?? 0), 0)
@@ -39,11 +40,11 @@ export default function Debts() {
         actions={canEdit && <button className="btn btn-primary" onClick={() => setEditing('new')}><Plus size={15} /> Agregar deuda</button>}
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        <Stat label="Saldo total por pagar" value={money(remaining)} sub={`${active.length} deudas activas`} />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+        <Stat label="Saldo por pagar" value={active.length > 0 && unknownBalance === active.length ? 'Sin dato' : money(remaining)} sub={unknownBalance ? `falta el saldo de ${unknownBalance} de ${active.length} deudas` : `${active.length} deudas activas`} />
         <Stat label="Ya pagado" value={money(paid)} tone="good" sub="incluye lo pagado antes de llevar registro" />
         <Stat label="Cuotas al mes" value={money(monthly)} sub="suma de cuotas de deudas activas" />
-        <Stat label="Costo financiero al mes" value={money(interest)} tone="bad" sub={withRate < active.length ? `estimado con tasa en ${withRate} de ${active.length} deudas` : 'intereses estimados sobre el saldo'} />
+        <Stat label="Costo financiero al mes" value={active.length > 0 && withRate === 0 && interest === 0 ? 'Sin dato' : money(interest)} tone={active.length > 0 && withRate === 0 && interest === 0 ? undefined : 'bad'} sub={withRate < active.length ? `falta la tasa de ${active.length - withRate} de ${active.length} deudas` : 'intereses estimados sobre el saldo'} />
       </div>
 
       {loading && rows.length === 0 ? (
@@ -55,7 +56,36 @@ export default function Debts() {
           action={canEdit && <button className="btn btn-primary" onClick={() => setEditing('new')}>Agregar deuda</button>}
         />
       ) : (
-        <div className="card overflow-x-auto">
+        <>
+        <ul className="lg:hidden flex flex-col gap-3">
+          {rows.map(d => {
+            const total = (d.remaining_est ?? 0) + (d.paid_total ?? 0)
+            const p = total > 0 ? ((d.paid_total ?? 0) / total) * 100 : 0
+            return (
+              <li key={d.id} className={`card p-4 ${d.status === 'pagada' ? 'opacity-60' : ''}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-medium">{d.creditor}</div>
+                    <div className="text-ink-3 text-[12.5px]">{d.entity_name} · {DEBT_KIND_LABEL[d.kind]}</div>
+                  </div>
+                  {d.status === 'en_mora' && <Chip tone="bad">En mora</Chip>}
+                </div>
+                <div className="grid grid-cols-3 gap-2 mt-3 text-[13px]">
+                  <div><div className="text-ink-3 text-[12px]">Cuota</div><div className="num font-medium">{money(d.monthly_payment)}</div></div>
+                  <div><div className="text-ink-3 text-[12px]">Falta</div><div className="num font-medium">{d.remaining_est == null ? 'sin dato' : money(d.remaining_est)}</div></div>
+                  <div><div className="text-ink-3 text-[12px]">Interés/mes</div><div className="num font-medium text-bad">{money(d.monthly_interest_est)}</div></div>
+                </div>
+                {d.remaining_est != null && <div className="h-1.5 rounded-full bg-line overflow-hidden mt-3"><div className="h-full rounded-full bg-ink" style={{ width: `${p}%` }} /></div>}
+                {d.notes && <p className="text-ink-2 text-[12.5px] mt-2.5">{d.notes}</p>}
+                <div className="flex gap-2 mt-3">
+                  <button className="btn btn-outline btn-sm" onClick={() => setDetail(d)}>Pagos</button>
+                  {canEdit && <button className="btn btn-outline btn-sm" onClick={() => setEditing(d)}>Completar datos</button>}
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+        <div className="hidden lg:block card overflow-x-auto">
           <table className="data">
             <thead>
               <tr>
@@ -64,7 +94,7 @@ export default function Debts() {
             </thead>
             <tbody>
               {rows.map(d => {
-                const total = d.remaining_est! + (d.paid_total ?? 0)
+                const total = (d.remaining_est ?? 0) + (d.paid_total ?? 0)
                 const p = total > 0 ? ((d.paid_total ?? 0) / total) * 100 : 0
                 const color = seriesColor(entities.find(e => e.id === d.entity_id)?.color_slot ?? 1)
                 return (
@@ -82,10 +112,11 @@ export default function Debts() {
                     <td className="text-ink-2">{DEBT_KIND_LABEL[d.kind]}</td>
                     <td className="num text-right">{money(d.principal)}</td>
                     <td className="num text-right text-income">{money(d.paid_total)}</td>
-                    <td className="num text-right font-medium">{money(d.remaining_est)}</td>
+                    <td className="num text-right font-medium">{d.remaining_est == null ? <span className="text-ink-3 font-normal" title="Falta el monto original o el saldo informado por el banco">sin dato</span> : money(d.remaining_est)}</td>
                     <td className="w-[120px]">
+                      {d.remaining_est == null ? <span className="text-ink-3 text-[12px]">—</span> : <>
                       <div className="h-1.5 rounded-full bg-line overflow-hidden"><div className="h-full rounded-full" style={{ width: `${p}%`, background: color }} /></div>
-                      <div className="text-ink-3 text-[11.5px] mt-0.5 num">{pct(p)}</div>
+                      <div className="text-ink-3 text-[11.5px] mt-0.5 num">{pct(p)}</div></>}
                     </td>
                     <td className="num text-right">{money(d.monthly_payment)}</td>
                     <td className="num text-right text-ink-2">{d.annual_rate != null ? `${d.annual_rate}%` : '—'}</td>
@@ -100,6 +131,7 @@ export default function Debts() {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       <p className="text-ink-3 text-[12.5px] mt-4 max-w-[80ch]">
@@ -140,7 +172,7 @@ function DebtModal({ item, onClose, onSaved }: { item: Debt | null; onClose: () 
     setBusy(true); setErr(null)
     const payload = {
       org_id: org.id, creditor: f.creditor.trim(), entity_id: f.entity_id, account_id: f.account_id || null, kind: f.kind,
-      principal: Number(f.principal), start_date: f.start_date || null,
+      principal: num(f.principal), start_date: f.start_date || null,
       installments_total: num(f.installments_total), installment_amount: num(f.installment_amount),
       annual_rate: num(f.annual_rate), balance_manual: num(f.balance_manual), balance_manual_at: f.balance_manual_at || null,
       paid_before_tracking: Number(f.paid_before_tracking || 0), status: f.status, notes: f.notes || null,
@@ -178,7 +210,7 @@ function DebtModal({ item, onClose, onSaved }: { item: Debt | null; onClose: () 
             {accounts.map(a => <option key={a.id} value={a.id}>{a.bank} · {a.name}{a.last4 ? ` ····${a.last4}` : ''}</option>)}
           </select>
         </Field>
-        <Field label="Monto original (CLP)"><input className="input num" type="number" value={f.principal} onChange={set('principal')} /></Field>
+        <Field label="Monto original (CLP)" hint="Si no se sabe, déjalo vacío y registra la cuota."><input className="input num" type="number" value={f.principal} onChange={set('principal')} /></Field>
         <Field label="Fecha de inicio"><input className="input" type="date" value={f.start_date} onChange={set('start_date')} /></Field>
         <Field label="Cuotas totales"><input className="input num" type="number" value={f.installments_total} onChange={set('installments_total')} /></Field>
         <Field label="Cuota mensual (CLP)"><input className="input num" type="number" value={f.installment_amount} onChange={set('installment_amount')} /></Field>
@@ -198,7 +230,7 @@ function DebtModal({ item, onClose, onSaved }: { item: Debt | null; onClose: () 
         <div>{item && <button className="btn btn-ghost text-bad" onClick={remove}>Eliminar</button>}</div>
         <div className="flex gap-2">
           <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
-          <button className="btn btn-primary" onClick={save} disabled={busy || !f.creditor.trim() || !f.principal || !f.entity_id}>{busy ? 'Guardando…' : 'Guardar'}</button>
+          <button className="btn btn-primary" onClick={save} disabled={busy || !f.creditor.trim() || (!f.principal && !f.installment_amount) || !f.entity_id}>{busy ? 'Guardando…' : 'Guardar'}</button>
         </div>
       </div>
     </Modal>

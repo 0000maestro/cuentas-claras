@@ -77,21 +77,21 @@ export default function Transactions() {
             <button className="btn btn-outline" onClick={runDetect} disabled={busy}>
               {busy ? <Spinner /> : <Wand2 size={15} />} Detectar recurrentes
             </button>
-            <Link to="/importar" className="btn btn-primary">Importar cartola</Link>
+            <Link to="/importar" className="btn btn-primary hidden sm:inline-flex">Subir archivos</Link>
           </>
         )}
       />
 
       <div className="flex flex-wrap items-center gap-2 mb-4">
-        <div className="relative">
+        <div className="relative w-full sm:w-auto">
           <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-3" />
-          <input className="input pl-8 w-[260px] py-1.5" placeholder="Buscar en descripción" value={search} onChange={e => setSearch(e.target.value)} />
+          <input className="input pl-8 w-full sm:w-[260px] py-1.5" placeholder="Buscar en descripción" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <select className="input w-[320px] py-1.5" value={accountId} onChange={e => setAccountId(e.target.value)} aria-label="Cuenta">
+        <select className="input w-full sm:w-[320px] py-1.5" value={accountId} onChange={e => setAccountId(e.target.value)} aria-label="Cuenta">
           <option value="">Todas las cuentas</option>
           {visibleAccounts.map(a => <option key={a.id} value={a.id}>{entities.find(e => e.id === a.entity_id)?.name} · {a.bank} {a.last4 ? `····${a.last4}` : ''}</option>)}
         </select>
-        <div className="flex rounded-md border border-line-2 overflow-hidden ml-auto">
+        <div className="flex rounded-md border border-line-2 overflow-x-auto max-w-full sm:ml-auto [&>button]:shrink-0">
           {(['todos', 'sin_categoria', 'salidas', 'entradas', 'traspasos'] as Filter[]).map(f => (
             <button
               key={f} onClick={() => setFilter(f)}
@@ -108,11 +108,37 @@ export default function Transactions() {
       ) : rows.length === 0 ? (
         <Empty
           title={`Sin movimientos en ${monthLabel(month).toLowerCase()}`}
-          body="Cambia de mes arriba a la derecha o importa una cartola para este período."
-          action={canEdit && <Link to="/importar" className="btn btn-primary">Importar cartola</Link>}
+          body="Cambia de mes arriba o sube archivos de este período."
+          action={canEdit && <Link to="/importar" className="btn btn-primary">Subir archivos</Link>}
         />
       ) : (
-        <div className="card overflow-x-auto">
+        <>
+        <ul className="lg:hidden card divide-y divide-line/70">
+          {visible.map(t => {
+            const acc = accounts.find(a => a.id === t.account_id)
+            const cat = categories.find(c => c.id === t.category_id)?.name
+            return (
+              <li key={t.id}>
+                <button className={`w-full text-left px-4 py-3 flex items-start justify-between gap-3 ${t.is_transfer ? 'opacity-60' : ''}`} onClick={() => canEdit && setRuleFor(t)}>
+                  <div className="min-w-0">
+                    <div className="truncate font-medium">{t.counterparty ?? t.description}</div>
+                    {t.counterparty && <div className="text-ink-3 text-[12px] truncate">{t.description}</div>}
+                    <div className="text-[12.5px] mt-0.5 truncate">
+                      <span className="text-ink-3">{dateDay(t.posted_at)} · {acc?.bank ?? ''} · </span>
+                      {t.is_transfer ? <span className="text-ink-3">Traspaso propio</span> : cat ? <span className="text-ink-2">{cat}</span> : <span className="text-[#8a5c00]">Sin explicar: toca para decir qué es</span>}
+                    </div>
+                  </div>
+                  <div className={`num shrink-0 font-medium ${t.amount > 0 && !t.is_transfer ? 'text-income' : ''}`}>{money(t.amount, { sign: true })}</div>
+                </button>
+              </li>
+            )
+          })}
+          <li className="px-4 py-3 bg-paper flex justify-between text-[13px]">
+            <span className="text-ink-2">Total visible</span>
+            <span className="num font-medium"><span className="text-income">{money(totals.in, { sign: true })}</span> <span className="text-ink-3">/</span> {money(totals.out, { sign: true })}</span>
+          </li>
+        </ul>
+        <div className="hidden lg:block card overflow-x-auto">
           <table className="data table-fixed">
             <colgroup>
               <col className="w-[60px]" /><col /><col className="w-[150px]" /><col className="w-[128px]" /><col className="w-[190px]" /><col className="w-[124px]" /><col className="w-[112px]" /><col className="w-[136px]" />
@@ -193,6 +219,7 @@ export default function Transactions() {
             </tfoot>
           </table>
         </div>
+        </>
       )}
 
       {ruleFor && (

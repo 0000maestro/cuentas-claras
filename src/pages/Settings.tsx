@@ -26,7 +26,7 @@ export default function Settings() {
   return (
     <div>
       <PageHeader title="Configuración" subtitle={org.name} />
-      <div className="flex gap-1 border-b border-line mb-5">
+      <div className="flex gap-1 border-b border-line mb-5 overflow-x-auto overflow-y-hidden [&>button]:shrink-0 [&>button]:whitespace-nowrap">
         {tabs.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} className={`px-3 py-2 text-[13.5px] -mb-px border-b-2 ${tab === t.id ? 'border-ink font-medium text-ink' : 'border-transparent text-ink-2 hover:text-ink'}`}>{t.label}</button>
         ))}
@@ -52,7 +52,7 @@ function EntitiesTab() {
         <button className="btn btn-primary" onClick={() => setEditing('new')}><Plus size={15} /> Agregar</button>
       </div>
       <div className="card overflow-hidden">
-        <table className="data">
+        <div className="overflow-x-auto"><table className="data">
           <thead><tr><th>Nombre</th><th>Tipo</th><th>RUT</th><th></th></tr></thead>
           <tbody>
             {entities.map(e => (
@@ -64,7 +64,7 @@ function EntitiesTab() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       </div>
       {editing && org && (
         <SimpleForm
@@ -111,7 +111,7 @@ function AccountsTab() {
               <span className="text-ink-3 text-[12.5px]">· {list.length} {list.length === 1 ? 'cuenta' : 'cuentas'}</span>
             </div>
             {list.length === 0 ? <div className="px-4 py-3 text-ink-3">Sin cuentas todavía.</div> : (
-              <table className="data">
+              <div className="overflow-x-auto"><table className="data">
                 <tbody>
                   {list.map(a => (
                     <tr key={a.id} className={!a.is_active ? 'opacity-50' : ''}>
@@ -123,7 +123,7 @@ function AccountsTab() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             )}
           </div>
         )
@@ -196,7 +196,7 @@ function RulesTab() {
       </div>
       <div className="card overflow-hidden">
         {rules.length === 0 ? <div className="p-6 text-ink-3">Sin reglas todavía.</div> : (
-          <table className="data">
+          <div className="overflow-x-auto"><table className="data">
             <thead><tr><th>Si contiene</th><th>Categoría</th><th>Entidad</th><th>Contraparte</th><th>Traspaso</th><th>Estado</th><th></th></tr></thead>
             <tbody>
               {rules.map(r => (
@@ -211,7 +211,7 @@ function RulesTab() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </div>
     </div>
@@ -230,7 +230,7 @@ function CategoriesTab() {
         <button className="btn btn-primary" onClick={() => setEditing('new')}><Plus size={15} /> Agregar</button>
       </div>
       <div className="card overflow-hidden">
-        <table className="data">
+        <div className="overflow-x-auto"><table className="data">
           <thead><tr><th>Categoría</th><th>Tipo</th><th>Costo fijo</th><th></th></tr></thead>
           <tbody>
             {categories.map(c => (
@@ -242,7 +242,7 @@ function CategoriesTab() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       </div>
       {editing && org && (
         <SimpleForm
@@ -348,7 +348,7 @@ function AccessTab() {
         {err && <p className="text-bad mt-2">{err}</p>}
       </div>
       <div className="card overflow-hidden">
-        <table className="data">
+        <div className="overflow-x-auto"><table className="data">
           <thead><tr><th>Quién</th><th>Rol</th><th>Estado</th><th></th></tr></thead>
           <tbody>
             {members.map(m => (
@@ -358,7 +358,7 @@ function AccessTab() {
               <tr key={i.id}><td>{i.email}</td><td>{roleLabel(i.role)}</td><td><Chip tone="warn">Invitado, aún no entra</Chip></td><td className="text-right"><button className="btn btn-ghost btn-sm text-bad" onClick={() => revoke(i.id)}>Revocar</button></td></tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       </div>
     </div>
   )

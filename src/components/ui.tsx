@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useEffect } from 'react'
@@ -34,17 +35,18 @@ export function Modal({ open, onClose, title, children, width = 'max-w-lg' }: {
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
   if (!open) return null
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[8vh] px-4" role="dialog" aria-modal="true" aria-label={title}>
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-end sm:items-start justify-center sm:pt-[8vh] sm:px-4" role="dialog" aria-modal="true" aria-label={title}>
       <div className="absolute inset-0 bg-ink/30" onClick={onClose} />
-      <div className={`relative card w-full ${width} shadow-xl max-h-[84vh] flex flex-col`}>
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-line">
+      <div className={`relative bg-sheet border border-line w-full ${width} shadow-xl max-h-[92dvh] sm:max-h-[84vh] flex flex-col rounded-t-2xl sm:rounded-[10px]`}>
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-line shrink-0">
           <h2 className="font-semibold">{title}</h2>
           <button className="btn btn-ghost btn-sm -mr-2" onClick={onClose} aria-label="Cerrar"><X size={16} /></button>
         </div>
-        <div className="p-5 overflow-y-auto">{children}</div>
+        <div className="p-5 overflow-y-auto overscroll-contain" style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}>{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
@@ -72,9 +74,9 @@ export function Chip({ tone = 'neutral', children }: { tone?: 'neutral' | 'good'
 export function Stat({ label, value, sub, tone }: { label: string; value: ReactNode; sub?: ReactNode; tone?: 'good' | 'bad' | 'neutral' }) {
   const color = tone === 'good' ? 'text-income' : tone === 'bad' ? 'text-bad' : 'text-ink'
   return (
-    <div className="card px-5 py-4">
+    <div className="card px-4 py-3.5 sm:px-5 sm:py-4 min-w-0">
       <div className="text-ink-2 text-[13px]">{label}</div>
-      <div className={`num text-[24px] font-semibold tracking-tight mt-1 ${color}`}>{value}</div>
+      <div className={`num text-[19px] sm:text-[24px] font-semibold tracking-tight mt-1 ${color}`}>{value}</div>
       {sub && <div className="text-ink-3 text-[12.5px] mt-1">{sub}</div>}
     </div>
   )

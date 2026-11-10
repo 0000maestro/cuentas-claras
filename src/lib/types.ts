@@ -7,6 +7,7 @@ export interface Organization {
   baseline_month: string | null
   baseline_fixed_cost: number | null
   target_reduction_pct: number
+  onboarding: { done?: boolean; step?: number; owner_name?: string } | null
 }
 
 export interface Entity {
@@ -17,6 +18,8 @@ export interface Entity {
   rut: string | null
   color_slot: number
   sort_order: number
+  activity: string | null
+  income_channels: string[]
 }
 
 export type AccountKind =
@@ -110,7 +113,7 @@ export interface Debt {
   account_id: string | null
   creditor: string
   kind: DebtKind
-  principal: number
+  principal: number | null
   currency: string
   start_date: string | null
   installments_total: number | null
@@ -126,7 +129,7 @@ export interface Debt {
   paid_total?: number
   payments_count?: number | null
   last_payment_at?: string | null
-  remaining_est?: number
+  remaining_est?: number | null
   monthly_interest_est?: number | null
   monthly_payment?: number | null
 }
@@ -229,6 +232,21 @@ export const CADENCE_LABEL: Record<Cadence, string> = {
   trimestral: 'Trimestral',
   anual: 'Anual',
   irregular: 'Irregular',
+}
+
+export interface DocumentRow {
+  id: string
+  org_id: string
+  entity_id: string | null
+  account_id: string | null
+  kind: 'cartola' | 'tarjeta' | 'cmf' | 'captura' | 'otro'
+  filename: string
+  storage_path: string | null
+  rows_found: number
+  rows_imported: number
+  status: 'recibido' | 'importado' | 'por_revisar' | 'procesado'
+  note: string | null
+  created_at: string
 }
 
 // ── Ahorro compartido ─────────────────────────────────────────────

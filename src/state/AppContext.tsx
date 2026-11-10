@@ -88,6 +88,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setAccounts((as as Account[]) ?? [])
     setCategories((cs as Category[]) ?? [])
     setLoadingOrg(false)
+    // si no se eligió un mes a mano, mostrar el último mes que tiene movimientos
+    if (!sessionStorage.getItem('cc.monthPicked')) {
+      const { data: last } = await supabase.from('transactions').select('posted_at').eq('org_id', orgId)
+        .order('posted_at', { ascending: false }).limit(1)
+      const d = (last as { posted_at: string }[] | null)?.[0]?.posted_at
+      if (d) setMonthState(d.slice(0, 7) + '-01')
+    }
   }, [orgId])
 
   useEffect(() => { refreshOrg() }, [refreshOrg])
@@ -103,12 +110,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setOrgId = (id: string) => {
     setOrgIdState(id); localStorage.setItem('cc.org', id)
     setEntityIdState(null); localStorage.removeItem('cc.entity')
+    sessionStorage.removeItem('cc.monthPicked'); sessionStorage.removeItem('cc.skipWelcome')
   }
   const setEntityId = (id: string | null) => {
     setEntityIdState(id)
     if (id) localStorage.setItem('cc.entity', id); else localStorage.removeItem('cc.entity')
   }
-  const setMonth = (m: string) => { setMonthState(m); localStorage.setItem('cc.month', m) }
+  const setMonth = (m: string) => { setMonthState(m); localStorage.setItem('cc.month', m); sessionStorage.setItem('cc.monthPicked', '1') }
 
   const org = useMemo(() => orgs.find(o => o.id === orgId) ?? null, [orgs, orgId])
   const role = useMemo(() => memberships.find(m => m.org_id === orgId)?.role ?? null, [memberships, orgId])

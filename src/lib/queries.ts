@@ -57,13 +57,13 @@ export async function fetchDebts(orgId: string, entityId?: string | null) {
   if (error) throw error
   return (data as Debt[]).map(d => ({
     ...d,
-    principal: Number(d.principal),
+    principal: d.principal == null ? null : Number(d.principal),
     installment_amount: d.installment_amount == null ? null : Number(d.installment_amount),
     annual_rate: d.annual_rate == null ? null : Number(d.annual_rate),
     balance_manual: d.balance_manual == null ? null : Number(d.balance_manual),
     paid_before_tracking: Number(d.paid_before_tracking),
     paid_total: Number(d.paid_total ?? 0),
-    remaining_est: Number(d.remaining_est ?? 0),
+    remaining_est: d.remaining_est == null ? null : Number(d.remaining_est),
     monthly_interest_est: d.monthly_interest_est == null ? null : Number(d.monthly_interest_est),
     monthly_payment: d.monthly_payment == null ? null : Number(d.monthly_payment),
   }))
@@ -73,6 +73,27 @@ export function monthsBack(month: string, n: number): string[] {
   const out: string[] = []
   for (let i = n - 1; i >= 0; i--) out.push(addMonths(month, -i))
   return out
+}
+
+export interface CategoryMonth {
+  category_id: string | null; category_name: string | null; category_kind: string | null
+  is_fixed: boolean; is_variable: boolean; total: number; n: number
+}
+
+export async function fetchCategoryMonth(orgId: string, month: string, entityId?: string | null): Promise<CategoryMonth[]> {
+  let q = supabase.from('v_category_month').select('category_id, category_name, category_kind, is_fixed, is_variable, total, n, entity_id').eq('org_id', orgId).eq('month', month)
+  if (entityId) q = q.eq('entity_id', entityId)
+  const { data, error } = await q
+  if (error) throw error
+  // sumar entre entidades
+  const map = new Map<string, CategoryMonth>()
+  for (const r of (data ?? []) as (CategoryMonth & { entity_id: string })[]) {
+    const k = r.category_id ?? '__none'
+    const cur = map.get(k)
+    if (cur) { cur.total += Number(r.total); cur.n += Number(r.n) }
+    else map.set(k, { category_id: r.category_id, category_name: r.category_name, category_kind: r.category_kind, is_fixed: r.is_fixed, is_variable: r.is_variable, total: Number(r.total), n: Number(r.n) })
+  }
+  return [...map.values()]
 }
 
 const num = (v: unknown) => (v === null || v === undefined ? null : Number(v))

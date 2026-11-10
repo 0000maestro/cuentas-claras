@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useApp } from './state/AppContext'
 import Layout from './components/Layout'
 import Login from './pages/Login'
@@ -10,17 +10,23 @@ import Debts from './pages/Debts'
 import Import from './pages/Import'
 import Savings from './pages/Savings'
 import Settings from './pages/Settings'
+import Welcome from './pages/Welcome'
 
 export default function App() {
-  const { session, loadingSession, orgs, org } = useApp()
+  const { session, loadingSession, orgs, org, canEdit } = useApp()
+  const loc = useLocation()
 
   if (loadingSession) return <Splash />
   if (!session) return <Login />
   if (orgs.length === 0) return <NoAccess />
   if (!org) return <Splash />
+  if (loc.pathname === '/' && canEdit && !org.onboarding?.done && !sessionStorage.getItem('cc.skipWelcome')) {
+    return <Navigate to="/bienvenida" replace />
+  }
 
   return (
     <Routes>
+      <Route path="bienvenida" element={<Welcome />} />
       <Route element={<Layout />}>
         <Route index element={<Dashboard />} />
         <Route path="movimientos" element={<Transactions />} />
