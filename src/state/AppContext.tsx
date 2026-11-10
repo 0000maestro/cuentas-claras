@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase'
 import type { Account, Category, Entity, Organization, Role } from '../lib/types'
 import { monthKey } from '../lib/format'
 
-interface Membership { org_id: string; role: Role }
+interface Membership { org_id: string; role: Role; user_id: string }
 
 interface AppState {
   session: Session | null
@@ -15,6 +15,10 @@ interface AppState {
   org: Organization | null
   role: Role | null
   canEdit: boolean
+  /** true si la organización es tuya (no estás como asesor en la de un cliente) */
+  isTitular: boolean
+  /** cómo se llama tu papel en una organización: 'Tu cuenta' o 'Asesor' / 'Cliente' / 'Solo ver' */
+  roleLabel: (orgId: string) => string
   setOrgId: (id: string) => void
   entities: Entity[]
   accounts: Account[]
@@ -59,7 +63,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!session) { setOrgs([]); setMemberships([]); return }
     await supabase.rpc('accept_invites')
     const [{ data: ms }, { data: os }] = await Promise.all([
-      supabase.from('memberships').select('org_id, role'),
+      supabase.from('memberships').select('org_id, role, user_id'),
       supabase.from('organizations').select('*').order('name'),
     ])
     setMemberships((ms as Membership[]) ?? [])
@@ -119,11 +123,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setMonth = (m: string) => { setMonthState(m); localStorage.setItem('cc.month', m); sessionStorage.setItem('cc.monthPicked', '1') }
 
   const org = useMemo(() => orgs.find(o => o.id === orgId) ?? null, [orgs, orgId])
-  const role = useMemo(() => memberships.find(m => m.org_id === orgId)?.role ?? null, [memberships, orgId])
+  const uid = session?.user.id
+  // la tabla devuelve a todos los miembros de cada organización: el rol propio se busca por usuario
+  const myRole = useCallback((id: string | null) => memberships.find(m => m.org_id === id && m.user_id === uid)?.role ?? null, [memberships, uid])
+  const role = useMemo(() => myRole(orgId), [myRole, orgId])
+  // titular = la organización es tuya: eres administrador cliente, o eres dueño y no hay un cliente con quien la compartes
+  const titularOf = useCallback((id: string | null) => {
+    const r = myRole(id)
+    if (r === 'admin') return true
+    if (r !== 'owner') return false
+    return !memberships.some(m => m.org_id === id && m.user_id !== uid && m.role === 'admin')
+  }, [myRole, memberships, uid])
+  const roleLabel = useCallback((id: string) => {
+    const r = myRole(id)
+    if (r === 'viewer') return 'Solo ver'
+    return titularOf(id) ? 'Tu cuenta' : 'Asesor'
+  }, [myRole, titularOf])
 
   const value: AppState = {
     session, loadingSession, orgs, memberships, org, role,
     canEdit: role === 'owner' || role === 'admin',
+    isTitular: titularOf(orgId),
+    roleLabel,
     setOrgId, entities, accounts, categories, entityId, setEntityId, month, setMonth,
     loadingOrg, refreshOrg, refreshOrgs,
     signOut: async () => { await supabase.auth.signOut(); localStorage.removeItem('cc.org') },

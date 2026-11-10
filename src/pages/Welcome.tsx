@@ -15,7 +15,7 @@ const STEPS = ['Tú', 'Tus negocios', 'Tus cuentas', 'Tus deudas', 'Tus movimien
 interface Draft { id?: string; name: string; kind: 'persona' | 'empresa'; rut: string; activity: string; income_channels: string[] }
 
 export default function Welcome() {
-  const { org, entities, accounts, refreshOrg, refreshOrgs, session } = useApp()
+  const { org, orgs, setOrgId, roleLabel, isTitular, entities, accounts, refreshOrg, refreshOrgs, session } = useApp()
   const nav = useNavigate()
   const [step, setStep] = useState(() => Math.min(org?.onboarding?.step ?? 0, STEPS.length - 1))
   const [name, setName] = useState(org?.onboarding?.owner_name ?? '')
@@ -72,6 +72,17 @@ export default function Welcome() {
           <Wordmark />
           <button className="text-ink-2 text-[13px] hover:text-ink" onClick={() => { sessionStorage.setItem('cc.skipWelcome', '1'); nav('/') }}>Seguir después</button>
         </div>
+        {orgs.length > 1 && org && (
+          <div className="max-w-2xl mx-auto px-4 pb-2 flex items-center gap-2 text-[13px]">
+            <span className="text-ink-2 shrink-0">Configurando:</span>
+            <select className="input py-1 text-[13px] min-w-0 flex-1" value={org.id} onChange={e => setOrgId(e.target.value)} aria-label="Organización">
+              {orgs.map(o => <option key={o.id} value={o.id}>{o.name} · {roleLabel(o.id)}</option>)}
+            </select>
+          </div>
+        )}
+        {!isTitular && (
+          <div className="max-w-2xl mx-auto px-4 pb-2 text-[12.5px] text-[#8a5c00]">Esta organización es de un cliente. Lo que completes aquí lo verá como hecho.</div>
+        )}
         <div className="max-w-2xl mx-auto px-4 pb-3">
           <div className="flex gap-1.5" role="progressbar" aria-valuemin={1} aria-valuemax={STEPS.length} aria-valuenow={step + 1}>
             {STEPS.map((s, i) => <div key={s} className={`h-1 flex-1 rounded-full ${i <= step ? 'bg-ink' : 'bg-line-2'}`} />)}

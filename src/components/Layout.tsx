@@ -16,14 +16,14 @@ const nav = [
 ]
 
 export default function Layout() {
-  const { org, orgs, setOrgId, entities, entityId, setEntityId, month, setMonth, session, signOut, canEdit } = useApp()
+  const { org, orgs, setOrgId, entities, entityId, setEntityId, month, setMonth, session, signOut, canEdit, roleLabel } = useApp()
   const [more, setMore] = useState(false)
   const loc = useLocation()
   useEffect(() => { setMore(false) }, [loc.pathname, entityId])
 
   const orgPicker = orgs.length > 1 ? (
     <select className="input text-[13px] py-1.5" value={org?.id ?? ''} onChange={e => setOrgId(e.target.value)} aria-label="Organización">
-      {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+      {orgs.map(o => <option key={o.id} value={o.id}>{o.name} · {roleLabel(o.id)}</option>)}
     </select>
   ) : <div className="px-1 text-[13px] text-ink-2 font-medium truncate">{org?.name}</div>
 
@@ -65,6 +65,12 @@ export default function Layout() {
 
       <div className="flex-1 min-w-0 flex flex-col">
         <header className="border-b border-line bg-sheet/90 backdrop-blur sticky top-0 z-10">
+          {orgs.length > 1 && (
+            <button className="lg:hidden w-full flex items-center justify-between gap-2 px-3 pt-2 text-[12.5px] text-ink-2" onClick={() => setMore(true)}>
+              <span className="truncate"><span className="text-ink font-medium">{org?.name}</span> · {org ? roleLabel(org.id) : ''}</span>
+              <span className="text-accent shrink-0">Cambiar</span>
+            </button>
+          )}
           <div className="h-14 flex items-center justify-between px-3 lg:px-6 gap-2">
             <div className="lg:hidden"><Wordmark compact /></div>
             <div className="hidden lg:block text-ink-2 text-[13px] truncate">{entityId ? entities.find(e => e.id === entityId)?.name : 'Todas las entidades'}</div>
@@ -109,7 +115,7 @@ export default function Layout() {
               <div className="font-semibold">{org?.name}</div>
               <button className="btn btn-ghost btn-sm -mr-2" onClick={() => setMore(false)} aria-label="Cerrar"><X size={18} /></button>
             </div>
-            {orgs.length > 1 && <div className="mb-3">{orgPicker}</div>}
+            {orgs.length > 1 && <div className="mb-3"><div className="text-[12px] text-ink-3 mb-1">Organización</div>{orgPicker}</div>}
             <div className="flex flex-col">
               <SheetLink to="/recurrentes" icon={Repeat} label="Costos recurrentes" />
               <SheetLink to="/ahorros" icon={PiggyBank} label="Ahorros y comisión" />

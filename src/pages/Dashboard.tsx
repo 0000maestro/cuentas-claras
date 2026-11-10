@@ -11,7 +11,7 @@ import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 
 export default function Dashboard() {
-  const { org, entityId, entities, month, categories, accounts, canEdit } = useApp()
+  const { org, entityId, entities, month, categories, accounts, canEdit, isTitular } = useApp()
   const [summary, setSummary] = useState<MonthlySummary[]>([])
   const [cats, setCats] = useState<CategoryMonth[]>([])
   const [recurring, setRecurring] = useState<Recurring[]>([])
@@ -89,8 +89,8 @@ export default function Dashboard() {
       {canEdit && !org.onboarding?.done && (
         <Link to="/bienvenida" className="card px-4 py-3 mb-4 flex items-center justify-between gap-3 hover:border-ink-3">
           <div>
-            <div className="font-medium">Termina la configuración inicial</div>
-            <div className="text-ink-2 text-[13px]">Confirma tus negocios, marca tus cuentas y sube lo que falta.</div>
+            <div className="font-medium">{isTitular ? 'Termina la configuración inicial' : 'El cliente aún no termina la configuración inicial'}</div>
+            <div className="text-ink-2 text-[13px]">{isTitular ? 'Confirma tus negocios, marca tus cuentas y sube lo que falta.' : 'Puedes revisarla o completarla por él; si la terminas, a él ya no le aparece.'}</div>
           </div>
           <ArrowRight size={18} className="text-ink-2 shrink-0" />
         </Link>

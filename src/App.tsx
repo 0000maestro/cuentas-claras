@@ -13,20 +13,20 @@ import Settings from './pages/Settings'
 import Welcome from './pages/Welcome'
 
 export default function App() {
-  const { session, loadingSession, orgs, org, canEdit } = useApp()
+  const { session, loadingSession, orgs, org, canEdit, isTitular } = useApp()
   const loc = useLocation()
 
   if (loadingSession) return <Splash />
   if (!session) return <Login />
   if (orgs.length === 0) return <NoAccess />
   if (!org) return <Splash />
-  if (loc.pathname === '/' && canEdit && !org.onboarding?.done && !sessionStorage.getItem('cc.skipWelcome')) {
+  if (loc.pathname === '/' && canEdit && isTitular && !org.onboarding?.done && !sessionStorage.getItem('cc.skipWelcome')) {
     return <Navigate to="/bienvenida" replace />
   }
 
   return (
     <Routes>
-      <Route path="bienvenida" element={<Welcome />} />
+      <Route path="bienvenida" element={<Welcome key={org.id} />} />
       <Route element={<Layout />}>
         <Route index element={<Dashboard />} />
         <Route path="movimientos" element={<Transactions />} />
